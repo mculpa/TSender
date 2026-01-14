@@ -1,11 +1,12 @@
 "use client"
 
 import InputField from "./ui/InputField";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { chainsToTSender, tsenderAbi, erc20Abi } from "@/constants";
 import { useChainId, useReadContract, useConfig, useAccount } from "wagmi";
 import { readContract } from "@wagmi/core";
 import { Account } from "viem/tempo";
+import { calculateTotal } from "@/utils";
 
 export default function AirdropForm() {
     const [tokenAddress, setTokenAddress] = useState("");
@@ -14,6 +15,7 @@ export default function AirdropForm() {
     const chainId = useChainId();
     const config = useConfig();
     const account = useAccount();
+    const total: number = useMemo(() => calculateTotal(amounts), [amounts]); 
 
     async function getApprovedAmount(tSenderAddress: string | null) : Promise<number> {
         if(!tSenderAddress) {
@@ -37,9 +39,9 @@ export default function AirdropForm() {
         // 1. Approve our tsender contract to send our tokens
         // 2. Call the airdrop function on the tsender contract
         // 3. wait for the tx to be mined
+        console.log(total);
         const tSenderAddress = chainsToTSender[chainId]["tsender"]
         const approvedAmount = await getApprovedAmount(tSenderAddress)
-        console.log("Approved amount: ", approvedAmount)
     }
 
     return (

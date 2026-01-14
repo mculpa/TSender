@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "anvil": "anvil --load-state tsender-deployed.json",
+    "test:unit": "vitest --environment=node",
     "dev": "next dev",
     "build": "next build",
     "start": "next start"
@@ -25,7 +26,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
+    "jsdom": "^27.4.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite-tsconfig-paths": "^6.0.4",
+    "vitest": "^4.0.17"
   }
 }
