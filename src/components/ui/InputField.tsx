@@ -1,56 +1,32 @@
-import React from "react";
-
-interface InputFieldProps {
-  label: string;
-  placeholder: string;
-  value: string;
-  type?: string;
-  large?: boolean;
-  onChange: (value: string) => void;
-  className?: string;
+export interface InputFormProps {
+    label: string
+    placeholder: string
+    value?: string
+    type?: string
+    large?: boolean
+    onChange?: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void
 }
 
-const InputField: React.FC<InputFieldProps> = ({
-  label,
-  placeholder,
-  value,
-  type = "text",
-  large = false,
-  onChange,
-  className = "",
-}) => {
-  const baseClasses = "w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    onChange(e.target.value);
-  };
-
-  return (
-    <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      {large ? (
-        <textarea
-          value={value}
-          onChange={handleChange}
-          placeholder={placeholder}
-          rows={4}
-          className={`${baseClasses} resize-y`}
-        />
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={handleChange}
-          placeholder={placeholder}
-          className={baseClasses}
-        />
-      )}
-    </div>
-  );
-};
-
-export default InputField;
+export function InputForm({ label, placeholder, value, type, large, onChange }: InputFormProps) {
+    return (
+        <div className="flex flex-col gap-1.5">
+            <label className="text-zinc-600 font-medium text-sm">{label}</label>
+            {large ? (
+                <textarea
+                    className={`bg-white py-2 px-3 border border-zinc-300 placeholder:text-zinc-500 text-zinc-900 shadow-xs rounded-lg focus:ring-[4px] focus:ring-zinc-400/15 focus:outline-none h-24 align-text-top`}
+                    placeholder={placeholder}
+                    value={value || ''}
+                    onChange={onChange}
+                />
+            ) : (
+                <input
+                    className={`bg-white py-2 px-3 border border-zinc-300 placeholder:text-zinc-500 text-zinc-900 shadow-xs rounded-lg focus:ring-[4px] focus:ring-zinc-400/15 focus:outline-none`}
+                    type={type}
+                    placeholder={placeholder}
+                    value={value || ''}
+                    onChange={onChange}
+                />
+            )}
+        </div>
+    )
+}
