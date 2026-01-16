@@ -3,10 +3,11 @@
 import {InputForm}  from "./ui/InputField";
 import { useState, useMemo } from "react";
 import { chainsToTSender, tsenderAbi, erc20Abi } from "@/constants";
-import { useChainId, useReadContract, useConfig, useConnection, useWriteContract } from "wagmi";
+import { useChainId, useReadContract, useConfig, useAccount, useWriteContract } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "@wagmi/core";
 import { Account } from "viem/tempo";
 import { calculateTotal } from "@/utils";
+import { token } from "viem/tempo/actions";
 
 export default function AirdropForm() {
     const [tokenAddress, setTokenAddress] = useState("");
@@ -14,7 +15,7 @@ export default function AirdropForm() {
     const [amounts, setAmounts] = useState("");
     const chainId = useChainId();
     const config = useConfig();
-    const account = useConnection();
+    const account = useAccount();
     const total: number = useMemo(() => calculateTotal(amounts), [amounts]); 
     const { data: hash, isPending, writeContractAsync} = useWriteContract();
 
@@ -56,7 +57,32 @@ export default function AirdropForm() {
             const approvalReceipt = await waitForTransactionReceipt(config, {
                 hash: approvalHash
             })
-            console.log("Approval confirmed: ", approvalReceipt);   
+            await writeContractAsync({
+                abi: tsenderAbi,
+                address: tSenderAddress as `0x${string}`,
+                functionName: "airdropERC20",
+                args: [
+                    tokenAddress,
+                    // Comma or new line separated
+                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                    BigInt(total),
+                ],
+            })
+              
+        } else {
+            await writeContractAsync({
+                abi: tsenderAbi,
+                address: tSenderAddress as `0x${string}`,
+                functionName: "airdropERC20",
+                args: [
+                    tokenAddress,
+                    // Comma or new line separated
+                    recipients.split(/[,\n]+/).map(addr => addr.trim()).filter(addr => addr !== ''),
+                    amounts.split(/[,\n]+/).map(amt => amt.trim()).filter(amt => amt !== ''),
+                    BigInt(total),
+                ],
+            })
         }
 
         
