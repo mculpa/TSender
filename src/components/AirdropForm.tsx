@@ -3,8 +3,9 @@
 import {InputForm}  from "./ui/InputField";
 import { useState, useMemo } from "react";
 import { chainsToTSender, tsenderAbi, erc20Abi } from "@/constants";
-import { useChainId, useReadContract, useConfig, useAccount, useWriteContract } from "wagmi";
+import { useChainId, useReadContract, useConfig, useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "@wagmi/core";
+import { CgSpinner } from "react-icons/cg"
 import { Account } from "viem/tempo";
 import { calculateTotal } from "@/utils";
 import { token } from "viem/tempo/actions";
@@ -16,11 +17,15 @@ export default function AirdropForm() {
     const chainId = useChainId();
     const config = useConfig();
     const account = useAccount();
-    const total: number = useMemo(() => calculateTotal(amounts), [amounts]); 
-    const { data: hash, isPending, writeContractAsync} = useWriteContract();
+    const total: number = useMemo(() => calculateTotal(amounts), [amounts]);
+
+    const { data: hash, isPending, error, writeContractAsync } = useWriteContract()
+    const { isLoading: isConfirming, isSuccess: isConfirmed, isError } = useWaitForTransactionReceipt({
+        confirmations: 1,
+        hash,
+    })
+
     
-    const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'confirming' | 'success' | 'error'>('idle');
-    const [txHash, setTxHash] = useState<string>("");
 
     async function getApprovedAmount(tSenderAddress: string | null) : Promise<number> {
         if(!tSenderAddress) {
@@ -52,7 +57,6 @@ export default function AirdropForm() {
             return;
         }
 
-        setTxStatus('pending'); // MetaMask popup is open
         const tSenderAddress = chainsToTSender[chainId]["tsender"]
         const approvedAmount = await getApprovedAmount(tSenderAddress)
 
@@ -78,8 +82,6 @@ export default function AirdropForm() {
                     BigInt(total),
                 ],
             })
-            setTxHash(transactionHash);
-            setTxStatus('confirming'); // User confirmed, waiting for blockchain
               
         } else {
             const transactionHash =await writeContractAsync({
@@ -94,11 +96,38 @@ export default function AirdropForm() {
                     BigInt(total),
                 ],
             })
-            setTxHash(transactionHash);
-            setTxStatus('confirming'); // User confirmed, waiting for blockchain
         }
 
         
+    }
+
+        function getButtonContent() {
+        if (isPending)
+            return (
+                <div className="flex items-center justify-center gap-2 w-full">
+                    <CgSpinner className="animate-spin" size={20} />
+                    <span>Confirming in wallet...</span>
+                </div>
+            )
+        if (isConfirming)
+            return (
+                <div className="flex items-center justify-center gap-2 w-full">
+                    <CgSpinner className="animate-spin" size={20} />
+                    <span>Waiting for transaction to be included...</span>
+                </div>
+            )
+        if (error || isError) {
+            console.log(error)
+            return (
+                <div className="flex items-center justify-center gap-2 w-full">
+                    <span>Error, see console.</span>
+                </div>
+            )
+        }
+        if (isConfirmed) {
+            return "Transaction confirmed."
+        }
+        return "Send Tokens"
     }
 
     return (
@@ -123,8 +152,12 @@ export default function AirdropForm() {
                onChange={e => setAmounts(e.target.value)}
                large={true}
                />
-            <button onClick={handleSubmit} className="block mx-auto px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200">
-                Send Tokens
+            <button onClick={handleSubmit} className={"block mx-auto px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"} 
+            //disabled={isPending || (tokenAddress !== "")}
+            >
+            
+            {getButtonContent()}
+                        
             </button>
         </div>
 
