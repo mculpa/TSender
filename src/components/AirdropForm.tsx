@@ -18,6 +18,9 @@ export default function AirdropForm() {
     const account = useAccount();
     const total: number = useMemo(() => calculateTotal(amounts), [amounts]); 
     const { data: hash, isPending, writeContractAsync} = useWriteContract();
+    
+    const [txStatus, setTxStatus] = useState<'idle' | 'pending' | 'confirming' | 'success' | 'error'>('idle');
+    const [txHash, setTxHash] = useState<string>("");
 
     async function getApprovedAmount(tSenderAddress: string | null) : Promise<number> {
         if(!tSenderAddress) {
@@ -44,6 +47,12 @@ export default function AirdropForm() {
         // 2. Call the airdrop function on the tsender contract
         // 3. wait for the tx to be mined
         console.log(total);
+        if (!account) {
+            alert("Please connect your wallet first");
+            return;
+        }
+
+        setTxStatus('pending'); // MetaMask popup is open
         const tSenderAddress = chainsToTSender[chainId]["tsender"]
         const approvedAmount = await getApprovedAmount(tSenderAddress)
 
@@ -57,7 +66,7 @@ export default function AirdropForm() {
             const approvalReceipt = await waitForTransactionReceipt(config, {
                 hash: approvalHash
             })
-            await writeContractAsync({
+            const transactionHash = await writeContractAsync({
                 abi: tsenderAbi,
                 address: tSenderAddress as `0x${string}`,
                 functionName: "airdropERC20",
@@ -69,9 +78,11 @@ export default function AirdropForm() {
                     BigInt(total),
                 ],
             })
+            setTxHash(transactionHash);
+            setTxStatus('confirming'); // User confirmed, waiting for blockchain
               
         } else {
-            await writeContractAsync({
+            const transactionHash =await writeContractAsync({
                 abi: tsenderAbi,
                 address: tSenderAddress as `0x${string}`,
                 functionName: "airdropERC20",
@@ -83,6 +94,8 @@ export default function AirdropForm() {
                     BigInt(total),
                 ],
             })
+            setTxHash(transactionHash);
+            setTxStatus('confirming'); // User confirmed, waiting for blockchain
         }
 
         
