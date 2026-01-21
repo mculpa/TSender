@@ -1,9 +1,9 @@
 "use client"
 
 import {InputForm}  from "./ui/InputField";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { chainsToTSender, tsenderAbi, erc20Abi } from "@/constants";
-import { useChainId, useReadContract, useConfig, useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useChainId, useReadContract, useConfig, useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContracts } from "wagmi";
 import { readContract, waitForTransactionReceipt } from "@wagmi/core";
 import { CgSpinner } from "react-icons/cg"
 import { Account } from "viem/tempo";
@@ -25,6 +25,27 @@ export default function AirdropForm() {
         hash,
     })
 
+        const { data: tokenInfo } = useReadContracts({
+        contracts: [
+            {
+                abi: erc20Abi,
+                address: tokenAddress as `0x${string}`,
+                functionName: "decimals",
+            },
+            {
+                abi: erc20Abi,
+                address: tokenAddress as `0x${string}`,
+                functionName: "name",
+            },
+            {
+                abi: erc20Abi,
+                address: tokenAddress as `0x${string}`,
+                functionName: "balanceOf",
+                args: [account.address],
+            },
+        ],
+    })
+    const [hasEnoughTokens, setHasEnoughTokens] = useState(true)
     
 
     async function getApprovedAmount(tSenderAddress: string | null) : Promise<number> {
@@ -130,6 +151,45 @@ export default function AirdropForm() {
         return "Send Tokens"
     }
 
+        function formatTokenAmount(weiAmount: number, decimals: number): string {
+    const tokenAmount = weiAmount / Math.pow(10, decimals)
+    return tokenAmount.toLocaleString(undefined, {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })
+}
+
+        useEffect(() => {
+        const savedTokenAddress = localStorage.getItem('tokenAddress')
+        const savedRecipients = localStorage.getItem('recipients')
+        const savedAmounts = localStorage.getItem('amounts')
+
+        if (savedTokenAddress) setTokenAddress(savedTokenAddress)
+        if (savedRecipients) setRecipients(savedRecipients)
+        if (savedAmounts) setAmounts(savedAmounts)
+    }, [])
+
+    useEffect(() => {
+        localStorage.setItem('tokenAddress', tokenAddress)
+    }, [tokenAddress])
+
+    useEffect(() => {
+        localStorage.setItem('recipients', recipients)
+    }, [recipients])
+
+    useEffect(() => {
+        localStorage.setItem('amounts', amounts)
+    }, [amounts])
+
+    useEffect(() => {
+        if (tokenAddress && total > 0 && tokenInfo?.[2]?.result as number !== undefined) {
+            const userBalance = tokenInfo?.[2].result as number;
+            setHasEnoughTokens(userBalance >= total);
+        } else {
+            setHasEnoughTokens(true);
+        }
+    }, [tokenAddress, total, tokenInfo]);
+
     return (
         <div>
             <InputForm
@@ -152,11 +212,35 @@ export default function AirdropForm() {
                onChange={e => setAmounts(e.target.value)}
                large={true}
                />
+               <div className="bg-white border border-zinc-300 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-zinc-900 mb-3">Transaction Details</h3>
+                    <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-zinc-600">Token Name:</span>
+                            <span className="font-mono text-zinc-900">
+                                {tokenInfo?.[1]?.result as string}
+                            </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-zinc-600">Amount (wei):</span>
+                            <span className="font-mono text-zinc-900">{total}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm text-zinc-600">Amount (tokens):</span>
+                            <span className="font-mono text-zinc-900">
+                                {formatTokenAmount(total, tokenInfo?.[0]?.result as number)}
+                            </span>
+                        </div>
+                    </div>
+                </div>
             <button onClick={handleSubmit} className={"block mx-auto px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 active:bg-green-800 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-colors duration-200"} 
-            //disabled={isPending || (tokenAddress !== "")}
+             disabled={isPending || (!hasEnoughTokens && tokenAddress !== "")}
             >
-            
-            {getButtonContent()}
+            {isPending || error || isConfirming
+                        ? getButtonContent()
+                        : !hasEnoughTokens && tokenAddress
+                            ? "Insufficient token balance"
+                            : "Send Tokens"}
                         
             </button>
         </div>
